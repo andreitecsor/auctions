@@ -9,10 +9,6 @@ public class Client extends WebSocketClient {
 
     String name;
 
-//    public Client(URI serverUri, Draft draft) {
-//        super(serverUri, draft);
-//    }
-
     public Client(URI serverURI) {
         super(serverURI);
         System.out.println("Please enter a name: ");
@@ -20,17 +16,11 @@ public class Client extends WebSocketClient {
         this.name = scanner.nextLine();
     }
 
-//    public Client(URI serverUri, Map<String, String> httpHeaders) {
-//        super(serverUri, httpHeaders);
-//    }
-
     @Override
     public void onOpen(ServerHandshake handshakeData) {
         System.out.println("Opened connection");
-        System.out.println("Commands: \n /auctions -> see all the active actions \n /bid [product name] [amount] -> to bid for a product \n /list -> to list a new auction");
+        System.out.println("Commands: \n /auctions -> see all the active auctions \n /bid [product name] [amount] -> to bid for a product \n /list -> to list a new auction");
         this.send("!" + this.name);
-        this.send("@Andu(caserolaCamin)123.23");
-        // if you plan to refuse connection based on ip or httpfields overload: onWebsocketHandshakeReceivedAsClient
     }
 
     @Override
@@ -40,16 +30,12 @@ public class Client extends WebSocketClient {
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        // The codecodes are documented in class org.java_websocket.framing.CloseFrame
-        System.out.println(
-                "Connection closed by " + (remote ? "remote peer" : "us") + " Code: " + code + " Reason: "
-                        + reason);
+        System.out.println("Connection closed.");
     }
 
     @Override
     public void onError(Exception ex) {
         System.out.println(ex.getMessage());
-        // if the error is fatal then onClose will be called additionally
     }
 
     public static void main(String[] args) throws URISyntaxException {

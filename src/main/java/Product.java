@@ -13,7 +13,7 @@ public class Product {
         this.name = name;
         this.bidderName = bidderName;
         this.startingPrice = startingPrice;
-        this.currentPrice = startingPrice;
+        this.currentPrice = 0;
     }
 
     public String getName() {

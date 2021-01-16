@@ -6,38 +6,27 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Server extends WebSocketServer {
 
     private Map<InetSocketAddress, String> clientMap = new HashMap<>();
+    static List<String> clientNameList = new ArrayList<>();
+    static List<Product> auctionList = new ArrayList<>();
 
-    static ArrayList<String> clientNameList = new ArrayList<>();
-    static ArrayList<Product> auctionList = new ArrayList<>();
-
-    //TODO: Change this
-    private final long bidTime = Long.MAX_VALUE;
+    private final long bidTime = 60000;
 
     public Server(int port) {
         super(new InetSocketAddress(port));
     }
 
-//    public Server(InetSocketAddress address) {
-//        super(address);
-//    }
-
-//    public Server(int port, Draft_6455 draft) {
-//        super(new InetSocketAddress(port), Collections.<Draft>singletonList(draft));
-//    }
-
     @Override
     public void onStart() {
         System.out.println("Server started!");
         setConnectionLostTimeout(0);
-        setConnectionLostTimeout(1000);
     }
 
     @Override
@@ -51,17 +40,9 @@ public class Server extends WebSocketServer {
     }
 
     @Override
-    public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        broadcast(clientMap.get(conn.getRemoteSocketAddress()) + " has left the room!");
-        System.out.println(clientMap.get(conn.getRemoteSocketAddress()) + " has left the room!");
-        clientNameList.remove(clientMap.get(conn.getRemoteSocketAddress()));
-        clientMap.remove(conn.getRemoteSocketAddress());
-    }
-
-    @Override
     public void onMessage(WebSocket conn, String message) {
         //Connecting a new client - checking name
-        System.out.println(conn.getRemoteSocketAddress());
+        System.out.println(conn.getRemoteSocketAddress() + " connected.");
         if (message.startsWith("!")) {
             message = message.substring(1);
             if (clientNameList.contains(message)) {
@@ -70,7 +51,7 @@ public class Server extends WebSocketServer {
             } else {
                 clientNameList.add(message);
                 clientMap.put(conn.getRemoteSocketAddress(), message);
-                broadcast("new connection: " + clientMap.get(conn.getRemoteSocketAddress()));
+                broadcast("A wild bidder appeared - " + clientMap.get(conn.getRemoteSocketAddress()));
                 System.out.println(clientMap.get(conn.getRemoteSocketAddress()) + " entered the room!");
             }
             return;
@@ -83,8 +64,8 @@ public class Server extends WebSocketServer {
             String productName = message.substring(message.indexOf("(") + 1);
             productName = productName.substring(0, productName.indexOf(")"));
             String ownerName = message.substring(0, message.indexOf("("));
-
             float startingPrice = Float.parseFloat(message.substring(message.indexOf(")") + 1));
+
             boolean check = true;
             for (int i = 0; i < auctionList.size(); i++) {
                 if (auctionList.get(i).getName().equals(productName)) {
@@ -117,6 +98,7 @@ public class Server extends WebSocketServer {
             conn.send(auctionList.toString());
             return;
         }
+
         if (message.startsWith("/bid")) {
             try {
                 boolean sent = false;
@@ -125,7 +107,7 @@ public class Server extends WebSocketServer {
                     for (int i = 0; i < auctionList.size(); i++) {
                         Product currentProduct = auctionList.get(i);
                         if (currentProduct.getName().equals(values[1])) {
-                            if (currentProduct.getCurrentPrice() < Float.parseFloat(values[2])) {
+                            if (currentProduct.getCurrentPrice() < Float.parseFloat(values[2]) && currentProduct.getStartingPrice() <= Float.parseFloat(values[2])) {
                                 currentProduct.setCurrentPrice(Float.parseFloat(values[2]));
                                 if (!currentProduct.getBidders().contains(conn.getRemoteSocketAddress())) {
                                     currentProduct.addBidder(conn.getRemoteSocketAddress());
@@ -159,29 +141,29 @@ public class Server extends WebSocketServer {
                 System.out.println(e.getMessage());
             }
         }
+
+        conn.send("Invalid command, please use one of the followings:" +
+                " \n /auctions -> see all the active actions \n /bid [product name] [amount] -> to bid for a product \n /list -> to list a new auction");
     }
 
-//    @Override
-//    public void onMessage(WebSocket conn, ByteBuffer message) {
-//        broadcast(message.array());
-//        System.out.println(conn + ": " + message);
-//    }
+    @Override
+    public void onClose(WebSocket conn, int code, String reason, boolean remote) {
+        broadcast(clientMap.get(conn.getRemoteSocketAddress()) + " has left the room!");
+        System.out.println(clientMap.get(conn.getRemoteSocketAddress()) + " has left the room!");
+        clientNameList.remove(clientMap.get(conn.getRemoteSocketAddress()));
+        clientMap.remove(conn.getRemoteSocketAddress());
+    }
 
     @Override
     public void onError(WebSocket conn, Exception ex) {
         ex.printStackTrace();
         if (conn != null) {
-            // some errors like port binding failed may not be assignable to a specific websocket
+            conn.send("Error: Task failed successfully");
         }
     }
 
     public static void main(String[] args) throws InterruptedException, IOException {
         int port = 8887;
-        try {
-            port = Integer.parseInt(args[0]);
-        } catch (Exception ex) {
-//            System.out.println("Invalid port");
-        }
         Server server = new Server(port);
         server.start();
         System.out.println("Server started on port: " + server.getPort());
