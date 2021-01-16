@@ -11,9 +11,9 @@ public class Client extends WebSocketClient {
 
     String name;
 
-    public Client(URI serverUri, Draft draft) {
-        super(serverUri, draft);
-    }
+//    public Client(URI serverUri, Draft draft) {
+//        super(serverUri, draft);
+//    }
 
     public Client(URI serverURI) {
         super(serverURI);
@@ -22,15 +22,16 @@ public class Client extends WebSocketClient {
         this.name = scanner.nextLine();
     }
 
-    public Client(URI serverUri, Map<String, String> httpHeaders) {
-        super(serverUri, httpHeaders);
-    }
+//    public Client(URI serverUri, Map<String, String> httpHeaders) {
+//        super(serverUri, httpHeaders);
+//    }
 
     @Override
-    public void onOpen(ServerHandshake handshakedata) {
-        System.out.println("opened connection");
-        this.send("!"+this.name);
-        this.send("@mortiimei(sugpula123)123.23");
+    public void onOpen(ServerHandshake handshakeData) {
+        System.out.println("Opened connection");
+        System.out.println("Commands: \n /auctions -> see all the active bids \n /bid [product name] [amount] -> to bid for a product \n /list -> to list a new auction");
+        this.send("!" + this.name);
+        this.send("@Andu(caserolaCamin)123.23");
         // if you plan to refuse connection based on ip or httpfields overload: onWebsocketHandshakeReceivedAsClient
     }
 
@@ -49,26 +50,26 @@ public class Client extends WebSocketClient {
 
     @Override
     public void onError(Exception ex) {
-        ex.printStackTrace();
+        System.out.println(ex.getMessage());
         // if the error is fatal then onClose will be called additionally
     }
 
     public static void main(String[] args) throws URISyntaxException {
-        Client c = new Client(new URI(
-                "ws://localhost:8887"));
-        c.connect();
+        Client client = new Client(new URI("ws://localhost:8887"));
+        client.connect();
+
         Scanner scanner = new Scanner(System.in);
-        while(true){
-            String msg = scanner.nextLine();
-            if(msg.equalsIgnoreCase("/list")) {
+        while (true) {
+            String input = scanner.nextLine();
+
+            if (input.equalsIgnoreCase("/list")) {
                 System.out.println("Enter the name of the product");
-                String name = scanner.nextLine();
+                String productName = scanner.nextLine();
                 System.out.println("Enter the starting price");
-                float price = Float.parseFloat(scanner.nextLine());
-                c.send("@" + c.name + "(" + name + ")" + price);
-            }
-            else {
-                c.send(msg);
+                float productPrice = Float.parseFloat(scanner.nextLine());
+                client.send("@" + client.name + "(" + productName + ")" + productPrice);
+            } else {
+                client.send(input);
             }
         }
     }
