@@ -8,15 +8,20 @@ import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Server extends WebSocketServer {
 
-    static ArrayList<String> clientList = new ArrayList<String>();
-    static ArrayList<Product> auctionList = new ArrayList<Product>();
+    private Map<InetSocketAddress, String> clientMap = new HashMap<>();
+
+    static ArrayList<String> clientNameList = new ArrayList<>();
+    static ArrayList<Product> auctionList = new ArrayList<>();
+
     //TODO: Change this
     private final long bidTime = Long.MAX_VALUE;
 
-    public Server(int port) throws UnknownHostException {
+    public Server(int port) {
         super(new InetSocketAddress(port));
     }
 
@@ -32,7 +37,7 @@ public class Server extends WebSocketServer {
     public void onStart() {
         System.out.println("Server started!");
         setConnectionLostTimeout(0);
-        setConnectionLostTimeout(100);
+        setConnectionLostTimeout(1000);
     }
 
     @Override
@@ -43,21 +48,14 @@ public class Server extends WebSocketServer {
         } else {
             conn.send(auctionList.toString());
         }
-
-        //TODO: Edit this to show the name
-        broadcast("new connection: " + handshake
-                .getResourceDescriptor()); //This method sends a message to all clients connected
-        //TODO: Edit this to show the name
-        System.out.println(
-                conn.getRemoteSocketAddress() + " entered the room!");
     }
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        //TODO: Edit this to show the name
-        broadcast(conn + " has left the room!");
-        //TODO: Edit this to show the name
-        System.out.println(conn + " has left the room!");
+        broadcast(clientMap.get(conn.getRemoteSocketAddress()) + " has left the room!");
+        System.out.println(clientMap.get(conn.getRemoteSocketAddress()) + " has left the room!");
+        clientNameList.remove(clientMap.get(conn.getRemoteSocketAddress()));
+        clientMap.remove(conn.getRemoteSocketAddress());
     }
 
     @Override
@@ -66,22 +64,25 @@ public class Server extends WebSocketServer {
         System.out.println(conn.getRemoteSocketAddress());
         if (message.startsWith("!")) {
             message = message.substring(1);
-            if (clientList.contains(message)) {
+            if (clientNameList.contains(message)) {
                 conn.send("Name already taken");
                 conn.close();
-
             } else {
-                clientList.add(message);
-                System.out.println(clientList.toString());
+                clientNameList.add(message);
+                clientMap.put(conn.getRemoteSocketAddress(), message);
+                broadcast("new connection: " + clientMap.get(conn.getRemoteSocketAddress()));
+                System.out.println(clientMap.get(conn.getRemoteSocketAddress()) + " entered the room!");
             }
+            return;
         }
+
         //Managing a new bid request
         if (message.startsWith("@")) {
             message = message.substring(1);
 
             String productName = message.substring(message.indexOf("(") + 1);
             productName = productName.substring(0, productName.indexOf(")"));
-            String bidderName = message.substring(0, message.indexOf("("));
+            String ownerName = message.substring(0, message.indexOf("("));
 
             float startingPrice = Float.parseFloat(message.substring(message.indexOf(")") + 1));
             boolean check = true;
@@ -92,9 +93,10 @@ public class Server extends WebSocketServer {
             }
 
             if (check) {
-                Product product = new Product(productName, bidderName, startingPrice);
+                Product product = new Product(productName, ownerName, startingPrice);
+                product.addBidder(conn.getRemoteSocketAddress());
                 auctionList.add(product);
-                broadcast("A new item has been added for bidding: " + product.toString());
+                broadcast("A new item has been added for auction: " + product.toString());
                 new java.util.Timer().schedule(
                         new java.util.TimerTask() {
                             @Override
@@ -108,24 +110,37 @@ public class Server extends WebSocketServer {
             } else {
                 conn.send("Auction already exists");
             }
-
+            return;
         }
+
         if (message.equals("/auctions")) {
             conn.send(auctionList.toString());
+            return;
         }
         if (message.startsWith("/bid")) {
             try {
                 boolean sent = false;
                 String[] values = message.split(" ");
                 if (values.length > 0) {
-//                    for (int i = 0; i < values.length; i++) {
-//                        System.out.println(values[i]);
-//                    }
                     for (int i = 0; i < auctionList.size(); i++) {
-                        if (auctionList.get(i).getName().equals(values[1])) {
-                            if (auctionList.get(i).getCurrentPrice() < Float.parseFloat(values[2])) {
-                                auctionList.get(i).setCurrentPrice(Float.parseFloat(values[2]));
+                        Product currentProduct = auctionList.get(i);
+                        if (currentProduct.getName().equals(values[1])) {
+                            if (currentProduct.getCurrentPrice() < Float.parseFloat(values[2])) {
+                                currentProduct.setCurrentPrice(Float.parseFloat(values[2]));
+                                if (!currentProduct.getBidders().contains(conn.getRemoteSocketAddress())) {
+                                    currentProduct.addBidder(conn.getRemoteSocketAddress());
+                                }
                                 conn.send("Bid successful");
+
+                                for (WebSocket webSocket : getConnections()) {
+                                    if (currentProduct.getBidders().contains(webSocket.getRemoteSocketAddress())) {
+                                        webSocket.send(clientMap.get(conn.getRemoteSocketAddress())
+                                                + " placed a new bid on "
+                                                + currentProduct.getName()
+                                                + ": "
+                                                + currentProduct.getCurrentPrice());
+                                    }
+                                }
                             } else {
                                 conn.send("Your bid must be higher than the current price!");
                             }
@@ -139,16 +154,11 @@ public class Server extends WebSocketServer {
                 if (!sent) {
                     conn.send("No auction found!");
                 }
-
+                return;
             } catch (Exception e) {
                 System.out.println(e.getMessage());
             }
         }
-//        else {
-//            broadcast(message);
-//            //TODO: replace conn with client name or delete it
-//            System.out.println(conn + ": " + message);
-//        }
     }
 
 //    @Override
@@ -170,7 +180,7 @@ public class Server extends WebSocketServer {
         try {
             port = Integer.parseInt(args[0]);
         } catch (Exception ex) {
-            System.out.println("Invalid port");
+//            System.out.println("Invalid port");
         }
         Server server = new Server(port);
         server.start();

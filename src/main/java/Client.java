@@ -1,10 +1,8 @@
 import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.drafts.Draft;
 import org.java_websocket.handshake.ServerHandshake;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Map;
 import java.util.Scanner;
 
 public class Client extends WebSocketClient {
@@ -29,7 +27,7 @@ public class Client extends WebSocketClient {
     @Override
     public void onOpen(ServerHandshake handshakeData) {
         System.out.println("Opened connection");
-        System.out.println("Commands: \n /auctions -> see all the active bids \n /bid [product name] [amount] -> to bid for a product \n /list -> to list a new auction");
+        System.out.println("Commands: \n /auctions -> see all the active actions \n /bid [product name] [amount] -> to bid for a product \n /list -> to list a new auction");
         this.send("!" + this.name);
         this.send("@Andu(caserolaCamin)123.23");
         // if you plan to refuse connection based on ip or httpfields overload: onWebsocketHandshakeReceivedAsClient
@@ -37,7 +35,7 @@ public class Client extends WebSocketClient {
 
     @Override
     public void onMessage(String message) {
-        System.out.println("received: " + message);
+        System.out.println(message);
     }
 
     @Override

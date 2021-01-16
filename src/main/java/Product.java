@@ -1,8 +1,13 @@
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+
 public class Product {
     private String name;
     private String bidderName;
     private float startingPrice;
     private float currentPrice;
+    private List<InetSocketAddress> bidders = new ArrayList<>();
 
     public Product(String name, String bidderName, float startingPrice) {
         this.name = name;
@@ -41,6 +46,22 @@ public class Product {
 
     public void setCurrentPrice(float currentPrice) {
         this.currentPrice = currentPrice;
+    }
+
+    public List<InetSocketAddress> getBidders() {
+        return bidders;
+    }
+
+    public void setBidders(List<InetSocketAddress> bidders) {
+        this.bidders = bidders;
+    }
+
+    public void addBidder(InetSocketAddress newBidder) {
+        bidders.add(newBidder);
+    }
+
+    public void deleteBidder(InetSocketAddress bidder) {
+        bidders.remove(bidder);
     }
 
     @Override
